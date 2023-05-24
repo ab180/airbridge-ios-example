@@ -1,36 +1,67 @@
-//
-//  AppDelegate.swift
-//  airbridge-ios-example
-//
-//  Created by 이영빈 on 2023/05/16.
-//
-
 import UIKit
+import AirBridge
 
-@main
+@UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
-
-
-
+    var window: UIWindow?
+    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        self.window = UIWindow(frame: UIScreen.main.bounds)
+        
+        window?.rootViewController = UIStoryboard(name: "Main", bundle: nil).instantiateInitialViewController()
+        window?.makeKeyAndVisible()
+        
+        // Initialize and get an Airbridge SDK instance
+        // Replace with your actual `appToken` and `appName`
+        AirBridge.getInstance("c3b61a44d8f74811b2f63857cfcd3a7f", appName: "exabr", withLaunchOptions:launchOptions)
+        
+        // Set the tracking authorize timeout in milliseconds
+        AirBridge.setting().trackingAuthorizeTimeout = 60 * 1000
         return true
     }
-
-    // MARK: UISceneSession Lifecycle
-
-    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        // Called when a new scene session is being created.
-        // Use this method to select a configuration to create the new scene with.
-        return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+    
+    // Handle URL scheme deeplinks
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        // AirBridge handles the URL scheme deeplink and reports the information
+        // through `handleURLSchemeDeeplink(_: URL)` method
+        
+        AirBridge.deeplink()?.handleURLSchemeDeeplink(url) { url in
+            // This block will be executed once the deeplink has been processed
+            // Here we present an alert with the received deeplink url
+            DispatchQueue.main.async {
+                guard let rootViewController = self.window?.rootViewController else { return }
+                rootViewController.present(self.deeplinkAlertController(url: url), animated: true)
+            }
+        }
+        
+        return true
     }
+    
+    // Handle universal links
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        // AirBridge handles the universal link and reports the information
+        // through `handle(_: NSUserActivity)` method
 
-    func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
-        // Called when the user discards a scene session.
-        // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
-        // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+        AirBridge.deeplink()?.handle(userActivity) { url in
+            // This block will be executed once the universal link has been processed
+            // Here we present an alert with the received url
+            DispatchQueue.main.async {
+                guard let rootViewController = self.window?.rootViewController else { return }
+                rootViewController.present(self.deeplinkAlertController(url: url), animated: true)
+            }
+        }
+        
+        return true
     }
-
-
+    
+    private func deeplinkAlertController(url: String) -> UIAlertController {
+        let alertController = UIAlertController(
+            title: "Deeplink",
+            message: url,
+            preferredStyle: .alert
+        )
+        
+        alertController.addAction(UIAlertAction(title: "Ok", style: .default))
+        return alertController
+    }
 }
-
