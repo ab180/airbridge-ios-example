@@ -1,9 +1,11 @@
 import UIKit
 import AirBridge
+import AppTrackingTransparency
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
+    var observer: NSObject?
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         self.window = UIWindow(frame: UIScreen.main.bounds)
@@ -17,15 +19,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // Set the tracking authorize timeout in milliseconds
         AirBridge.setting().trackingAuthorizeTimeout = 60 * 1000
-        return true
-    }
-    
-    // Handle URL scheme deeplinks
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        // AirBridge handles the URL scheme deeplink and reports the information
-        // through `handleURLSchemeDeeplink(_: URL)` method
         
-        AirBridge.deeplink()?.handleURLSchemeDeeplink(url) { url in
+        // Set deeplink callback
+        AirBridge.deeplink().setDeeplinkCallback { url in
             // This block will be executed once the deeplink has been processed
             // Here we present an alert with the received deeplink url
             DispatchQueue.main.async {
@@ -34,6 +30,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
         
+        // Request tracking authorization
+        let observer = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            if #available(iOS 14, *) {
+                ATTrackingManager.requestTrackingAuthorization { _ in }
+            }
+            if let observer = self?.observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
+        return true
+    }
+    
+    // Handle URL scheme deeplinks
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        // AirBridge handles the URL scheme deeplink and reports the information
+        // through `handleURLSchemeDeeplink(_: URL)` method
+        AirBridge.deeplink()?.handleURLSchemeDeeplink(url)
+        
         return true
     }
     
@@ -41,15 +59,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         // AirBridge handles the universal link and reports the information
         // through `handle(_: NSUserActivity)` method
-
-        AirBridge.deeplink()?.handle(userActivity) { url in
-            // This block will be executed once the universal link has been processed
-            // Here we present an alert with the received url
-            DispatchQueue.main.async {
-                guard let rootViewController = self.window?.rootViewController else { return }
-                rootViewController.present(self.deeplinkAlertController(url: url), animated: true)
-            }
-        }
+        AirBridge.deeplink()?.handle(userActivity)
         
         return true
     }

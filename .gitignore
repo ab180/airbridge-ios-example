@@ -1,4 +1,5 @@
-
 Pods/
-
 airbridge-ios-example.xcworkspace/
+xcuserdata/
+xcuserdatad/
+.DS_Store
